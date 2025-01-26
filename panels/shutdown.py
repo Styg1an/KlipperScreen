@@ -1,8 +1,9 @@
 import logging
 import os
-
 import gi
-
+import sys
+sys.path.append('/usr/lib/python3/dist-packages')  # Adjust path as needed
+import RPi.GPIO as GPIO
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 from ks_includes.screen_panel import ScreenPanel
@@ -27,6 +28,15 @@ class Panel(ScreenPanel):
 
         lock_screen = self._gtk.Button("lock", _("Lock"), "color3")
         lock_screen.connect("clicked", self._screen.lock_screen.lock)
+	
+        extra_button = self._gtk.Button("extra", _("Power ON/OFF"), "color2")  # New Button
+        extra_button.connect("clicked", self.extra_button_action)  # Connect to the function
+
+        # Set the pin numbering mode
+        GPIO.setmode(GPIO.BCM)  # Or use GPIO.BOARD for physical pin numbers
+
+        # Example: Configure GPIO pin 27 as an output pin
+        GPIO.setup(27, GPIO.OUT)
 
         self.main = Gtk.Grid(row_homogeneous=True, column_homogeneous=True)
         if self._printer and self._printer.state not in {'disconnected', 'startup', 'shutdown', 'error'}:
@@ -35,7 +45,16 @@ class Panel(ScreenPanel):
         self.main.attach(lock_screen, 2, 0, 1, 1)
         self.main.attach(poweroff, 1, 1, 1, 1)
         self.main.attach(restart, 2, 1, 1, 1)
+        self.main.attach(extra_button, 1, 2, 1, 1)  # Positioning it at (0, 2)
         self.content.add(self.main)
+
+    def extra_button_action(self, widget):
+        """ Toggle the state of GPIO27 on the Raspberry Pi """
+        current_state = GPIO.input(27)  # Read current state of GPIO27
+        if current_state == GPIO.HIGH:
+            GPIO.output(27, GPIO.LOW)  # Turn off GPIO27
+        else:
+            GPIO.output(27, GPIO.HIGH)  # Turn on GPIO27
 
     def reboot_poweroff(self, widget, method):
         label = Gtk.Label(wrap=True, hexpand=True, vexpand=True)
